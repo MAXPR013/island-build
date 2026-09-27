@@ -155,17 +155,14 @@ static void initIsland() {
 typedef id (*DidFinishLaunching_t)(id, SEL, id);
 static DidFinishLaunching_t orig_DidFinishLaunching = NULL;
 
-static id hooked_DidFinishLaunching(id self, SEL _cmd, id app) {
-    id r = orig_DidFinishLaunching(self, _cmd, app);
-    initIsland();
-    return r;
+static void mark(const char *p) {
+    FILE *f = fopen(p, "w");
+    if (f) { fputs("ok", f); fclose(f); }
 }
 
 __attribute__((constructor))
 static void island_boot() {
-    Class sb = objc_getClass("SpringBoard");
-    if (sb) {
-        MSHookMessageEx(sb, sel_registerName("applicationDidFinishLaunching:"),
-            (IMP)hooked_DidFinishLaunching, (IMP *)&orig_DidFinishLaunching);
-    }
+    mark("/var/mobile/island_ctor.txt");
+    initIsland();
+    mark("/var/mobile/island_init.txt");
 }
