@@ -3,6 +3,10 @@
 //       音乐：显示正在播放的歌名-歌手；充电：闪电+电量百分比
 // 平台：iOS 6.1.3 / armv7 / MobileSubstrate / MRC（无 Logos，手写 MSHookMessageEx）
 #include "mini_ios.h"
+typedef struct __sFILE FILE;
+extern "C" FILE *fopen(const char *, const char *);
+extern "C" int fputs(const char *, FILE *);
+extern "C" int fclose(FILE *);
 #include "CydiaSubstrate.h"
 #include <dlfcn.h>
 
