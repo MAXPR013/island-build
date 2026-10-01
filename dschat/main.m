@@ -17,6 +17,10 @@ static void exHandler(NSException *e) {
     writeCrashTo([NSString stringWithFormat:@"EXCEPTION: %@ / %@\n%@", [e name], [e reason], [[e callStackSymbols] description]], @"exception.txt");
 }
 
+static void MARK(const char *stage) {
+    writeCrashTo([NSString stringWithFormat:@"%s", stage], @"stage.txt");
+}
+
 extern void NSSetUncaughtExceptionHandler(void *h);
 extern int backtrace(void **buffer, int size);
 extern char **backtrace_symbols(void *const *buffer, int size);
@@ -56,57 +60,70 @@ static void sigHandler2(int sig) {
 @implementation AppDelegate
 
 - (BOOL)application:(UIApplication *)app didFinishLaunchingWithOptions:(NSDictionary *)opts {
+    MARK("01_start");
     CGRect b = [[UIScreen mainScreen] bounds];
     CGFloat w = b.size.width, h = b.size.height;
     _window = [[UIWindow alloc] initWithFrame:b];
     _window.backgroundColor = [UIColor whiteColor];
+    MARK("02_window");
 
     _log = [[UITextView alloc] initWithFrame:CGRectMake(0, 0, w, h - 48.0f)];
+    MARK("03_tv_alloc");
     _log.editable = NO;
     _log.font = [UIFont systemFontOfSize:15.0f];
     [_window addSubview:_log];
+    MARK("04_tv_added");
 
     UIView *bar = [[UIView alloc] initWithFrame:CGRectMake(0, h - 48.0f, w, 48.0f)];
     bar.backgroundColor = [UIColor colorWithWhite:0.95f alpha:1.0f];
     bar.tag = 4242;   // 用 tag 找它，不留额外 ivar 依赖
     [_window addSubview:bar];
+    MARK("05_bar");
 
     _field = [[UITextField alloc] initWithFrame:CGRectMake(8, 8, w - 92, 32)];
     _field.borderStyle = UITextBorderStyleRoundedRect;
     _field.placeholder = @"说点什么…";
     _field.returnKeyType = UIReturnKeySend;
+    MARK("06_field");
     [_field addTarget:self action:@selector(fieldBegan) forControlEvents:UIControlEventEditingDidBegin];
     [_field addTarget:self action:@selector(fieldEnded) forControlEvents:UIControlEventEditingDidEnd];
     [_field addTarget:self action:@selector(sendPressed) forControlEvents:UIControlEventEditingDidEndOnExit];
     [bar addSubview:_field];
+    MARK("07_field_wired");
 
     _sendBtn = [UIButton buttonWithType:UIButtonTypeRoundedRect];
     _sendBtn.frame = CGRectMake(w - 78, 8, 70, 32);
     [_sendBtn setTitle:@"发送" forState:UIControlStateNormal];
     [_sendBtn addTarget:self action:@selector(sendPressed) forControlEvents:UIControlEventTouchUpInside];
     [bar addSubview:_sendBtn];
+    MARK("08_button");
 
     _spin = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
     _spin.center = CGPointMake(w - 96, 24);
     _spin.hidesWhenStopped = YES;
     [bar addSubview:_spin];
+    MARK("09_spin");
 
     [_window makeKeyAndVisible];
+    MARK("10_visible");
 
     _msgs = [[NSMutableArray alloc] init];
     _buf = [[NSMutableData alloc] init];
     _history = [[NSMutableString alloc] init];
+    MARK("11_arrays");
 
     NSString *docs = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0];
     NSString *keyPath = [docs stringByAppendingPathComponent:@"apikey.txt"];
     _apiKey = [[[NSString stringWithContentsOfFile:keyPath encoding:NSUTF8StringEncoding error:NULL]
                 stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] retain];
+    MARK("12_key");
 
     if ([_apiKey length] == 0) {
         [self appendLine:@"系统" text:@"没有读到 apikey.txt，请检查注入是否成功。"];
     } else {
         [self appendLine:@"DeepSeek" text:@"你好，我是 DeepSeek，跑在 2011 年的 iPhone 4S 上。有何贵干？"];
     }
+    MARK("13_firstline");
     return YES;
 }
 
