@@ -101,8 +101,10 @@ static void MARK(const char *stage) {
     _field = [[UITextField alloc] initWithFrame:CGRectMake(8, 8, f.size.width - 92, 32)];
     _field.borderStyle = UITextBorderStyleRoundedRect;
     _field.placeholder = @"说点什么…";
-    _field.delegate = self;
     _field.returnKeyType = UIReturnKeySend;
+    [_field addTarget:self action:@selector(fieldBegan) forControlEvents:UIControlEventEditingDidBegin];
+    [_field addTarget:self action:@selector(fieldEnded) forControlEvents:UIControlEventEditingDidEnd];
+    [_field addTarget:self action:@selector(sendPressed) forControlEvents:UIControlEventEditingDidEndOnExit];
     [_inputBar addSubview:_field];
     MARK("13_field_added");
     _sendBtn = [UIButton buttonWithType:UIButtonTypeRoundedRect];
@@ -125,18 +127,11 @@ static void MARK(const char *stage) {
     _inputBar.frame = CGRectMake(0, f.size.height - 48.0f - kh, f.size.width, 48.0f);
 }
 
-- (BOOL)textFieldShouldBeginEditing:(UITextField *)tf {
-    MARK("40_should_begin");
+- (void)fieldBegan {
     [self slideInputUp:YES];
-    return YES;
 }
 
-- (void)textFieldDidBeginEditing:(UITextField *)tf {
-    MARK("41_did_begin");
-}
-
-- (void)textFieldDidEndEditing:(UITextField *)tf {
-    MARK("42_did_end");
+- (void)fieldEnded {
     [self slideInputUp:NO];
 }
 
