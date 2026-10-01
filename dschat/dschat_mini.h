@@ -161,13 +161,13 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 - (NSInteger)statusCode;
 @end
 
-@interface NSMutableDictionary : NSDictionary
-- (void)setObject:(id)o forKey:(id)k;
-@end
-
 @interface NSDictionary : NSObject
 + (id)dictionaryWithObjectsAndKeys:(id)first, ...;
 - (id)objectForKey:(id)key;
+@end
+
+@interface NSMutableDictionary : NSDictionary
+- (void)setObject:(id)o forKey:(id)k;
 @end
 
 @interface NSNumber : NSObject
