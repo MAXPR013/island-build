@@ -326,10 +326,6 @@ static NSString *b64encode(NSData *d) {
     [_field resignFirstResponder];
 }
 
-- (void)scrollViewWillBeginDragging:(id)sv {
-    [_field resignFirstResponder];
-}
-
 #pragma mark - 深度思考
 
 - (void)thinkPressed {
