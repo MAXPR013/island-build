@@ -21,6 +21,15 @@ jobs:
         run: |
           brew install ldid
           ldid -S _build/DSChat
+      - name: Build TestMini
+        run: |
+          xcrun -sdk iphoneos clang -x objective-c -std=gnu99 -O2 -fno-objc-arc \
+            -target armv7-apple-ios6.0.0 -miphoneos-version-min=6.0 \
+            -Idschat -nostdlib -undefined dynamic_lookup -Wl,-ld_classic -lSystem \
+            -framework UIKit -framework Foundation -framework CoreGraphics \
+            -o _build/TestMini dschat/mini.m
+          ldid -S _build/TestMini
+          file _build/TestMini
       - name: Pack IPA
         run: |
           mkdir -p Payload/DSChat.app
@@ -28,8 +37,21 @@ jobs:
           cp dschat/Info.plist "dschat/Icon.png" "dschat/Icon@2x.png" "dschat/Default@2x.png" Payload/DSChat.app/
           zip -r DSChat.ipa Payload
           ls -la DSChat.ipa
+      - name: Pack TestMini IPA
+        run: |
+          mkdir -p PayloadMini/TestMini.app
+          cp _build/TestMini PayloadMini/TestMini.app/
+          cp dschat/Info-mini.plist PayloadMini/TestMini.app/Info.plist
+          cp "dschat/Icon.png" "dschat/Icon@2x.png" PayloadMini/TestMini.app/
+          zip -r TestMini.ipa PayloadMini
+          ls -la TestMini.ipa
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: DSChat.ipa
           path: DSChat.ipa
+      - name: Upload TestMini artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TestMini.ipa
+          path: TestMini.ipa
