@@ -50,9 +50,9 @@ jobs:
         with:
           name: DSChat.ipa
           path: DSChat.ipa
-      - name: Build Mini variants A/B/C
+      - name: Build Mini variants A/B/C/D
         run: |
-          for V in A B C; do
+          for V in A B C D; do
             xcrun -sdk iphoneos clang -x objective-c -std=gnu99 -O2 -fno-objc-arc \
               -target armv7-apple-ios6.0.0 -miphoneos-version-min=6.0 \
               -Idschat -nostdlib -undefined dynamic_lookup -Wl,-ld_classic -lSystem \
