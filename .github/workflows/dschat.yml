@@ -1,40 +1,33 @@
 name: build-dschat
-on:
-  workflow_dispatch:
-  push:
-    paths:
-      - 'dschat/**'
-      - '.github/workflows/dschat.yml'
+on: [push, workflow_dispatch]
+
 jobs:
   build:
-    runs-on: macos-13
+    runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - name: 编译 armv7 / iOS 6
+      - name: 选用 Xcode 15.4（最后一个支持 armv7 的大版本）
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+      - name: 编译 DSChat（armv7 / iOS 6.0，经典链接器，免 SDK）
         run: |
-          set -e
-          sudo xcode-select -s /Applications/Xcode_13.4.1.app/Contents/Developer || true
-          SDK=$(xcrun -sdk iphoneos --show-sdk-path)
-          xcrun -sdk iphoneos clang \
-            -x objective-c -std=gnu99 -fblocks -O2 -fno-objc-arc \
+          xcrun -sdk iphoneos clang -x objective-c -std=gnu99 -O2 -fno-objc-arc \
             -target armv7-apple-ios6.0.0 -miphoneos-version-min=6.0 \
-            -isysroot "$SDK" \
-            -o DSChat dschat/main.m \
-            -framework UIKit -framework Foundation -framework CoreGraphics
+            -Idschat -nostdlib -undefined dynamic_lookup -Wl,-ld_classic \
+            -o DSChat dschat/main.m
           file DSChat
       - name: ldid 伪签名
         run: |
-          brew install ldid || true
+          brew install ldid
           ldid -S DSChat
       - name: 打包 IPA
         run: |
           mkdir -p Payload/DSChat.app
           cp DSChat Payload/DSChat.app/
-          cp dschat/Info.plist Payload/DSChat.app/
-          cp dschat/Icon.png dschat/Icon@2x.png dschat/Default@2x.png Payload/DSChat.app/
+          cp dschat/Info.plist "dschat/Icon.png" "dschat/Icon@2x.png" "dschat/Default@2x.png" Payload/DSChat.app/
           zip -r DSChat.ipa Payload
           ls -la DSChat.ipa
-      - uses: actions/upload-artifact@v4
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
         with:
           name: DSChat.ipa
           path: DSChat.ipa
