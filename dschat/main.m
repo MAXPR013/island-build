@@ -74,11 +74,15 @@ static NSString *b64encode(NSData *d) {
     NSString *_sessionId;
     NSMutableString *_streamText;
     NSMutableString *_streamThink;
+    NSString *_streamBase;
+    NSTimer *_streamTimer;
+    UIButton *_kbOverlay;
     CGFloat _kbHeight;
     BOOL _waiting;
     BOOL _editing;
     BOOL _deepThink;
     BOOL _httpError;
+    BOOL _streamDirty;
     NSInteger _alertMode;
 }
 @end
@@ -148,6 +152,13 @@ static NSString *b64encode(NSData *d) {
     _thumb = [[UIImageView alloc] initWithFrame:CGRectMake(w - 54, top + h - 48 - 52, 46, 46)];
     _thumb.hidden = YES;
     [_shell.view addSubview:_thumb];
+
+    // 键盘开启时盖在对话区上的透明回收层（点键盘外收键盘）
+    _kbOverlay = [UIButton buttonWithType:0];   // Custom，全透明
+    _kbOverlay.frame = CGRectMake(0, 0, w, h - 48.0f);
+    _kbOverlay.hidden = YES;
+    [_kbOverlay addTarget:self action:@selector(overlayTapped) forControlEvents:UIControlEventTouchUpInside];
+    [_shell.view insertSubview:_kbOverlay belowSubview:[_shell.view viewWithTag:4242]];
 
     _kbHeight = 252.0f;
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(kbShow:) name:UIKeyboardWillShowNotification object:nil];
@@ -265,12 +276,18 @@ static NSString *b64encode(NSData *d) {
 
 - (void)fieldBegan {
     _editing = YES;
+    _kbOverlay.hidden = NO;
     [self slideInput:YES];
 }
 
 - (void)fieldEnded {
     _editing = NO;
+    _kbOverlay.hidden = YES;
     [self slideInput:NO];
+}
+
+- (void)overlayTapped {
+    [_field resignFirstResponder];
 }
 
 - (void)scrollViewWillBeginDragging:(id)sv {
@@ -378,6 +395,11 @@ static NSString *b64encode(NSData *d) {
     _httpError = NO;
     [_streamText setString:@""];
     [_streamThink setString:@""];
+    _streamDirty = NO;
+    [_streamBase release];
+    _streamBase = [[_log text] copy];
+    [_streamTimer invalidate];
+    _streamTimer = [NSTimer scheduledTimerWithTimeInterval:0.3 target:self selector:@selector(streamTick) userInfo:nil repeats:YES];
 
     NSMutableArray *apiMsgs = [NSMutableArray array];
     [apiMsgs addObject:[NSDictionary dictionaryWithObjectsAndKeys:@"system", @"role",
@@ -416,6 +438,23 @@ static NSString *b64encode(NSData *d) {
     [_log scrollRangeToVisible:r];
 }
 
+- (void)streamTick {
+    if (!_streamDirty) return;
+    _streamDirty = NO;
+    NSMutableString *show = [NSMutableString string];
+    if (_streamBase) [show appendString:_streamBase];
+    if ([_streamThink length] > 0) {
+        [show appendString:@"\nDeepSeek：\n【思考中…】\n"];
+        [show appendString:_streamThink];
+    }
+    if ([_streamText length] > 0) {
+        [show appendString:@"\nDeepSeek：\n"];
+        [show appendString:_streamText];
+    }
+    _log.text = show;
+    [self scrollBottomPlain];
+}
+
 - (void)processSSELine:(NSString *)line {
     if (![line hasPrefix:@"data:"]) return;
     NSString *payload = [[line substringFromIndex:5] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
@@ -430,13 +469,11 @@ static NSString *b64encode(NSData *d) {
     NSString *think = [delta objectForKey:@"reasoning_content"];
     if ([think isKindOfClass:[NSString class]] && [think length] > 0) {
         [_streamThink appendString:think];
-        _log.text = [[_log text] stringByAppendingString:think];
-        [self scrollBottomPlain];
+        _streamDirty = YES;
     }
     if ([piece isKindOfClass:[NSString class]] && [piece length] > 0) {
         [_streamText appendString:piece];
-        _log.text = [[_log text] stringByAppendingString:piece];
-        [self scrollBottomPlain];
+        _streamDirty = YES;
     }
 }
 
@@ -469,10 +506,17 @@ static NSString *b64encode(NSData *d) {
     }
 }
 
+- (void)stopStreamTimer {
+    [_streamTimer invalidate];   // scheduledTimer 返回的是 autorelease 对象，不许 release
+    _streamTimer = nil;
+    [_streamBase release]; _streamBase = nil;
+}
+
 - (void)finalizeStream {
     _waiting = NO;
     _sendBtn.enabled = YES;
     [_spin stopAnimating];
+    [self stopStreamTimer];
     if ([_streamThink length] == 0 && [_streamText length] == 0) return;
     [self appendStyled:_rich text:@"DeepSeek：\n" font:[UIFont boldSystemFontOfSize:14.0f] shaded:NO gray:NO];
     if ([_streamThink length] > 0) {
@@ -493,6 +537,7 @@ static NSString *b64encode(NSData *d) {
         _waiting = NO;
         _sendBtn.enabled = YES;
         [_spin stopAnimating];
+        [self stopStreamTimer];
         id obj = [NSJSONSerialization JSONObjectWithData:_buf options:0 error:NULL];
         NSString *msg = @"未知错误";
         if ([obj isKindOfClass:[NSDictionary class]] && [obj objectForKey:@"error"])
@@ -507,6 +552,7 @@ static NSString *b64encode(NSData *d) {
     _waiting = NO;
     _sendBtn.enabled = YES;
     [_spin stopAnimating];
+    [self stopStreamTimer];
     [self appendLine:@"系统" text:[NSString stringWithFormat:@"网络错误：%@（code %d）",
         [error localizedDescription], (int)[error code]]];
 }
