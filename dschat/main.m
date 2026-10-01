@@ -165,6 +165,11 @@ static void MARK(const char *stage) {
     _inputBar.frame = CGRectMake(0, f.size.height - 48.0f - kh, f.size.width, 48.0f);
 }
 
+// iOS 6 朝向回调
+- (BOOL)shouldAutorotate { return NO; }
+- (NSUInteger)supportedInterfaceOrientations { return 2; }
+- (NSInteger)preferredInterfaceOrientationForPresentation { return 1; }
+
 - (void)fieldBegan {
     [self slideInputUp:YES];
 }
@@ -376,15 +381,16 @@ static void MARK(const char *stage) {
     MARK("01_appdelegate_begin");
     _window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     MARK("02_window_made");
-    _shell = [[UIViewController alloc] init];
-    _window.rootViewController = _shell;
-    MARK("03_shell_rooted");
     _chat = [[ChatViewController alloc] init];
-    [_shell.view addSubview:_chat.view];
+    [_window addSubview:_chat.view];
     MARK("04_chat_added");
     [_window makeKeyAndVisible];
     MARK("05_visible");
     return YES;
+}
+// iOS 6 朝向回调：给 UIKit 一个明确的答案，别让它摸到空指针
+- (NSUInteger)application:(id)app supportedInterfaceOrientationsForWindow:(id)w {
+    return 2; // UIInterfaceOrientationMaskPortrait
 }
 - (void)dealloc { [_window release]; [_shell release]; [_chat release]; [super dealloc]; }
 @end
