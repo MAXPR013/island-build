@@ -46,6 +46,8 @@ enum { UIActivityIndicatorViewStyleGray = 2 };
 @class NSURLAuthenticationChallenge, NSURLProtectionSpace, UIFont, UIColor, CALayer;
 @class UIView, UIViewController, UIWindow, UIScreen, UILabel, UITableView, UITableViewCell;
 @class UITextField, UIButton, UIControl, UIActivityIndicatorView, UIApplication;
+@class UITextView, UIImage, UIImageView, UIImagePickerController, UIActionSheet, UIAlertView, NSDate, NSFileManager;
+@class NSAttributedString, NSMutableAttributedString, NSHTTPURLResponse;
 
 // ---- 外部字符串常量 ----
 typedef struct _NSRange { NSUInteger location; NSUInteger length; } NSRange;
@@ -79,6 +81,9 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 - (BOOL)isKindOfClass:(Class)c;
 @end
 
+@interface NSNull : NSObject
+@end
+
 @interface NSAutoreleasePool : NSObject
 @end
 
@@ -91,7 +96,11 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 - (BOOL)isEqualToString:(id)s;
 - (BOOL)hasPrefix:(id)prefix;
 - (id)substringFromIndex:(NSUInteger)idx;
+- (id)substringToIndex:(NSUInteger)idx;
 - (id)componentsSeparatedByString:(id)sep;
+- (id)stringByDeletingPathExtension;
+- (id)initWithData:(NSData *)data encoding:(NSUInteger)enc;
+- (NSData *)dataUsingEncoding:(NSUInteger)enc;
 @end
 
 @interface NSString (UIKitAdditions)
@@ -113,6 +122,10 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 - (NSUInteger)count;
 - (id)objectAtIndex:(NSUInteger)i;
 - (NSUInteger)countByEnumeratingWithState:(void *)state objects:(id *)stackbuf count:(NSUInteger)len;
++ (id)arrayWithObject:(id)o;
++ (id)arrayWithObjects:(id)first, ...;
+- (id)sortedArrayUsingSelector:(SEL)sel;
+- (id)mutableCopy;
 @end
 
 @interface NSMutableArray : NSArray
@@ -122,10 +135,28 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 
 @interface NSMutableString : NSObject
 + (id)stringWithFormat:(id)fmt, ...;
++ (id)string;
 - (id)initWithFormat:(id)fmt, ...;
 - (void)appendFormat:(id)fmt, ...;
 - (void)appendString:(id)s;
 - (id)description;
+- (NSUInteger)length;
+@end
+
+@interface NSDate : NSObject
++ (id)date;
+- (double)timeIntervalSince1970;
+@end
+
+@interface NSFileManager : NSObject
++ (id)defaultManager;
+- (BOOL)createDirectoryAtPath:(id)path withIntermediateDirectories:(BOOL)intermediate attributes:(id)attrs error:(NSError **)err;
+- (id)contentsOfDirectoryAtPath:(id)path error:(NSError **)err;
+- (BOOL)removeItemAtPath:(id)path error:(NSError **)err;
+@end
+
+@interface NSHTTPURLResponse : NSObject
+- (NSInteger)statusCode;
 @end
 
 @interface NSDictionary : NSObject
@@ -139,11 +170,16 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 
 @interface NSData : NSObject
 - (NSUInteger)length;
+- (const void *)bytes;
++ (id)dataWithContentsOfFile:(id)path;
+- (BOOL)writeToFile:(id)path atomically:(BOOL)atom;
+- (id)subdataWithRange:(NSRange)r;
 @end
 
 @interface NSMutableData : NSData
 - (void)setLength:(NSUInteger)len;
 - (void)appendData:(NSData *)d;
+- (void)setData:(NSData *)d;
 @end
 
 @interface NSJSONSerialization : NSObject
@@ -247,6 +283,7 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 @interface UIView : NSObject
 @property (nonatomic) CGRect frame;
 @property (nonatomic) NSInteger tag;
+@property (nonatomic) BOOL hidden;
 @property (nonatomic, retain) UIColor *backgroundColor;
 @property (nonatomic, readonly) CALayer *layer;
 - (id)initWithFrame:(CGRect)f;
@@ -320,6 +357,7 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 @interface UIButton : UIControl
 + (id)buttonWithType:(NSInteger)type;
 - (void)setTitle:(id)title forState:(NSUInteger)state;
+- (void)setTitleColor:(id)color forState:(NSUInteger)state;
 @end
 
 @interface UITextField : UIControl
@@ -336,6 +374,51 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 - (void)startAnimating;
 - (void)stopAnimating;
 @end
+
+@interface UIImage : NSObject
+- (CGSize)size;
+- (void)drawInRect:(CGRect)r;
+@end
+
+@interface UIImageView : UIView
+- (id)initWithImage:(UIImage *)img;
+- (void)setImage:(UIImage *)img;
+@end
+
+@protocol UIImagePickerControllerDelegate @end
+@protocol UINavigationControllerDelegate @end
+@protocol UIActionSheetDelegate @end
+@protocol UIAlertViewDelegate @end
+
+@interface UIImagePickerController : NSObject
+@property (nonatomic) NSInteger sourceType;
+@property (nonatomic, assign) id delegate;
++ (BOOL)isSourceTypeAvailable:(NSInteger)type;
+@end
+
+@interface UIActionSheet : NSObject
+- (id)initWithTitle:(id)title delegate:(id)del cancelButtonTitle:(id)cancel destructiveButtonTitle:(id)destructive otherButtonTitles:(id)first, ...;
+- (void)showInView:(id)view;
+@end
+
+@interface UIAlertView : NSObject
+- (id)initWithTitle:(id)title message:(id)msg delegate:(id)del cancelButtonTitle:(id)cancel otherButtonTitles:(id)first, ...;
+- (void)setTitle:(id)title;
+- (void)setDelegate:(id)del;
+- (NSInteger)addButtonWithTitle:(id)title;
+- (void)show;
+@end
+
+@interface UIViewController (ModalPresentation)
+- (void)presentModalViewController:(id)vc animated:(BOOL)anim;
+- (void)dismissModalViewControllerAnimated:(BOOL)anim;
+@end
+
+// ---- UIKit 图像 C 函数 ----
+void UIGraphicsBeginImageContext(CGSize size);
+id UIGraphicsGetImageFromCurrentImageContext(void);
+void UIGraphicsEndImageContext(void);
+NSData *UIImageJPEGRepresentation(id image, CGFloat quality);
 
 #endif // __OBJC__
 #endif // DSCHAT_MINI_H
