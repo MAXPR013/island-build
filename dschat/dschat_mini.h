@@ -131,6 +131,12 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 + (id)whitespaceAndNewlineCharacterSet;
 @end
 
+@interface NSException : NSObject
+- (id)name;
+- (id)reason;
+- (id)callStackSymbols;
+@end
+
 @interface NSIndexPath : NSObject
 + (id)indexPathForRow:(NSInteger)row inSection:(NSInteger)section;
 - (NSInteger)row;
