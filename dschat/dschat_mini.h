@@ -311,6 +311,9 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 @end
 
 @interface UIScrollView : UIView
+@property (nonatomic) CGSize contentSize;
+@property (nonatomic) CGPoint contentOffset;
+- (void)setContentOffset:(CGPoint)offset animated:(BOOL)anim;
 @end
 
 @interface UITextView : UIScrollView
