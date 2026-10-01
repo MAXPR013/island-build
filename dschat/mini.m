@@ -17,9 +17,15 @@
     [_w addSubview:l];
     UITextField *f = [[UITextField alloc] initWithFrame:CGRectMake(20, 300, 280, 32)];
     f.borderStyle = UITextBorderStyleRoundedRect;
-    f.placeholder = @"tap me test";
+    f.placeholder = @"说点什么…";
+    f.returnKeyType = UIReturnKeySend;
+    f.delegate = self;
     [_w addSubview:f];
     [_w makeKeyAndVisible];
+    return YES;
+}
+- (BOOL)textFieldShouldReturn:(UITextField *)tf {
+    [tf resignFirstResponder];
     return YES;
 }
 - (void)dealloc { [_w release]; [super dealloc]; }
