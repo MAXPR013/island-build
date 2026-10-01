@@ -4,16 +4,20 @@
 #include <signal.h>
 
 // ---- 坠机记录仪 ----
-static void writeCrash(id text) {
+static void writeCrashTo(id text, NSString *fname) {
     @autoreleasepool {
         NSString *docs = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0];
-        NSString *p = [docs stringByAppendingPathComponent:@"crash.txt"];
+        NSString *p = [docs stringByAppendingPathComponent:fname];
         [text writeToFile:p atomically:YES encoding:4 error:NULL];
     }
 }
 
+static void writeCrash(id text) {
+    writeCrashTo(text, @"crash.txt");
+}
+
 static void exHandler(NSException *e) {
-    writeCrash([NSString stringWithFormat:@"EXCEPTION: %@ / %@\n%@", [e name], [e reason], [[e callStackSymbols] description]]);
+    writeCrashTo([NSString stringWithFormat:@"EXCEPTION: %@ / %@\n%@", [e name], [e reason], [[e callStackSymbols] description]], @"exception.txt");
 }
 
 extern void NSSetUncaughtExceptionHandler(void *h);
