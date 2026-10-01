@@ -1,6 +1,6 @@
 // DSChat - DeepSeek chat client for iOS 6 (armv7)
-// No ARC, NSURLConnection, single-file build.
-#import <UIKit/UIKit.h>
+// No ARC, NSURLConnection, single-file build, SDK-free (mini headers + dynamic_lookup).
+#include "dschat_mini.h"
 
 #pragma mark - Bubble cell
 
@@ -15,7 +15,7 @@
 
 @implementation ChatCell
 
-- (id)initWithStyle:(UITableViewCellStyle)style reuseIdentifier:(NSString *)reuseIdentifier {
+- (id)initWithStyle:(NSInteger)style reuseIdentifier:(NSString *)reuseIdentifier {
     self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
     if (self) {
         self.selectionStyle = UITableViewCellSelectionStyleNone;
@@ -115,7 +115,7 @@
 
     NSString *docs = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0];
     NSString *keyPath = [docs stringByAppendingPathComponent:@"apikey.txt"];
-    _apiKey = [[[NSString stringWithContentsOfFile:keyPath encoding:NSUTF8StringEncoding error:nil]
+    _apiKey = [[[NSString stringWithContentsOfFile:keyPath encoding:NSUTF8StringEncoding error:NULL]
                 stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] retain];
 
     if ([_apiKey length] == 0) {
@@ -184,7 +184,7 @@
         apiMsgs, @"messages",
         [NSNumber numberWithBool:NO], @"stream",
         nil];
-    NSData *json = [NSJSONSerialization dataWithJSONObject:body options:0 error:nil];
+    NSData *json = [NSJSONSerialization dataWithJSONObject:body options:0 error:NULL];
 
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:
         [NSURL URLWithString:@"https://api.deepseek.com/chat/completions"]];
