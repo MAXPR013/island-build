@@ -104,6 +104,13 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 - (void)addObject:(id)o;
 @end
 
+@interface NSMutableString : NSObject
++ (id)stringWithFormat:(id)fmt, ...;
+- (id)initWithFormat:(id)fmt, ...;
+- (void)appendFormat:(id)fmt, ...;
+- (id)description;
+@end
+
 @interface NSDictionary : NSObject
 + (id)dictionaryWithObjectsAndKeys:(id)first, ...;
 - (id)objectForKey:(id)key;
