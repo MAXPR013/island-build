@@ -120,13 +120,9 @@ static void MARK(const char *stage) {
 
 - (void)slideInputUp:(BOOL)up {
     CGFloat kh = up ? 216.0f : 0.0f;   // iOS 6 竖屏键盘固定高
-    [UIView beginAnimations:nil context:NULL];
-    [UIView setAnimationDuration:0.25];
     CGRect f = self.view.frame;
     _table.frame = CGRectMake(0, 0, f.size.width, f.size.height - 48.0f - kh);
     _inputBar.frame = CGRectMake(0, f.size.height - 48.0f - kh, f.size.width, 48.0f);
-    [UIView commitAnimations];
-    if (up) [self scrollToBottom];
 }
 
 - (void)textFieldDidBeginEditing:(UITextField *)tf {
@@ -135,10 +131,6 @@ static void MARK(const char *stage) {
 
 - (void)textFieldDidEndEditing:(UITextField *)tf {
     [self slideInputUp:NO];
-}
-
-- (void)scrollViewWillBeginDragging:(id)sv {
-    [_field resignFirstResponder];
 }
 
 - (void)viewDidLoad {
