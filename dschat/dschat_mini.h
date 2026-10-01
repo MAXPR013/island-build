@@ -38,6 +38,8 @@ enum { UIControlEventTouchUpInside = 1 << 6 };
 enum { UIControlEventEditingDidBegin = 1 << 16 };
 enum { UIControlEventEditingDidEnd = 1 << 18 };
 enum { UIControlEventEditingDidEndOnExit = 1 << 19 };
+enum { UIActivityIndicatorViewStyleWhiteLarge = 0 };
+enum { UIActivityIndicatorViewStyleWhite = 1 };
 enum { UIActivityIndicatorViewStyleGray = 2 };
 
 @class NSString, NSArray, NSMutableArray, NSDictionary, NSNumber, NSData, NSMutableData;
