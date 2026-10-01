@@ -116,10 +116,29 @@ static void MARK(const char *stage) {
     [_inputBar addSubview:_spin];
     [self.view addSubview:_inputBar];
     MARK("14_inputbar_done");
+}
 
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(kbShow:) name:UIKeyboardWillShowNotification object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(kbHide:) name:UIKeyboardWillHideNotification object:nil];
-    MARK("15_observers_done");
+- (void)slideInputUp:(BOOL)up {
+    CGFloat kh = up ? 216.0f : 0.0f;   // iOS 6 竖屏键盘固定高
+    [UIView beginAnimations:nil context:NULL];
+    [UIView setAnimationDuration:0.25];
+    CGRect f = self.view.frame;
+    _table.frame = CGRectMake(0, 0, f.size.width, f.size.height - 48.0f - kh);
+    _inputBar.frame = CGRectMake(0, f.size.height - 48.0f - kh, f.size.width, 48.0f);
+    [UIView commitAnimations];
+    if (up) [self scrollToBottom];
+}
+
+- (void)textFieldDidBeginEditing:(UITextField *)tf {
+    [self slideInputUp:YES];
+}
+
+- (void)textFieldDidEndEditing:(UITextField *)tf {
+    [self slideInputUp:NO];
+}
+
+- (void)scrollViewWillBeginDragging:(id)sv {
+    [_field resignFirstResponder];
 }
 
 - (void)viewDidLoad {
