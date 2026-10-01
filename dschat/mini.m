@@ -15,6 +15,10 @@
     l.text = @"MINI OK - launch works";
     l.textAlignment = UITextAlignmentCenter;
     [_w addSubview:l];
+    UITextField *f = [[UITextField alloc] initWithFrame:CGRectMake(20, 300, 280, 32)];
+    f.borderStyle = UITextBorderStyleRoundedRect;
+    f.placeholder = @"tap me test";
+    [_w addSubview:f];
     [_w makeKeyAndVisible];
     return YES;
 }
