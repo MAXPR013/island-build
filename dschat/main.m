@@ -125,12 +125,23 @@ static void MARK(const char *stage) {
     _inputBar.frame = CGRectMake(0, f.size.height - 48.0f - kh, f.size.width, 48.0f);
 }
 
-- (void)textFieldDidBeginEditing:(UITextField *)tf {
+- (BOOL)textFieldShouldBeginEditing:(UITextField *)tf {
+    MARK("40_should_begin");
     [self slideInputUp:YES];
+    return YES;
+}
+
+- (void)textFieldDidBeginEditing:(UITextField *)tf {
+    MARK("41_did_begin");
 }
 
 - (void)textFieldDidEndEditing:(UITextField *)tf {
+    MARK("42_did_end");
     [self slideInputUp:NO];
+}
+
+- (void)scrollViewWillBeginDragging:(id)sv {
+    [_field resignFirstResponder];
 }
 
 - (void)viewDidLoad {
