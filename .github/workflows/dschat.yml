@@ -18,11 +18,11 @@ jobs:
       - name: ldid 伪签名
         run: |
           brew install ldid
-          ldid -S DSChat
+          ldid -S _build/DSChat
       - name: 打包 IPA
         run: |
-          mkdir -p Payload/DSChat.app
-          cp DSChat Payload/DSChat.app/
+          mkdir -p _build Payload/DSChat.app
+          cp _build/DSChat Payload/DSChat.app/
           cp dschat/Info.plist "dschat/Icon.png" "dschat/Icon@2x.png" "dschat/Default@2x.png" Payload/DSChat.app/
           zip -r DSChat.ipa Payload
           ls -la DSChat.ipa
