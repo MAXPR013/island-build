@@ -66,7 +66,9 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 @protocol UIApplicationDelegate @end
 
 // ---- Foundation ----
-@interface NSObject
+@interface NSObject {
+    Class isa;   // 必须有：没有它子类 ivar 从偏移0开始，第一个赋值就会砸掉 isa 指针
+}
 + (id)alloc;
 + (Class)class;
 - (id)init;
