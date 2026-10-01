@@ -161,6 +161,11 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 - (NSInteger)statusCode;
 @end
 
+@interface NSTimer : NSObject
++ (id)scheduledTimerWithTimeInterval:(double)t target:(id)target selector:(SEL)sel userInfo:(id)info repeats:(BOOL)rep;
+- (void)invalidate;
+@end
+
 @interface NSDictionary : NSObject
 + (id)dictionaryWithObjectsAndKeys:(id)first, ...;
 - (id)objectForKey:(id)key;
@@ -294,6 +299,7 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 @property (nonatomic, readonly) CALayer *layer;
 - (id)initWithFrame:(CGRect)f;
 - (void)addSubview:(UIView *)v;
+- (void)insertSubview:(UIView *)v belowSubview:(UIView *)sib;
 - (id)viewWithTag:(NSInteger)tag;
 + (void)beginAnimations:(id)animID context:(void *)ctx;
 + (void)setAnimationDuration:(double)d;
