@@ -31,7 +31,7 @@ enum { UITableViewScrollPositionBottom = 3 };
 enum { UITextAlignmentLeft = 0, UITextAlignmentCenter = 1, UITextAlignmentRight = 2 };
 enum { UILineBreakModeWordWrap = 0 };
 enum { UITextBorderStyleRoundedRect = 3 };
-enum { UIReturnKeySend = 9 };
+enum { UIReturnKeySend = 7 };
 enum { UIButtonTypeRoundedRect = 1 };
 enum { UIControlStateNormal = 0 };
 enum { UIControlEventTouchUpInside = 1 << 6 };
