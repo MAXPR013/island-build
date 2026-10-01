@@ -72,11 +72,21 @@
 
 @implementation ChatViewController
 
+static void MARK(const char *stage) {
+    @autoreleasepool {
+        NSString *docs = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0];
+        NSString *p = [docs stringByAppendingPathComponent:@"stage.txt"];
+        [[NSString stringWithFormat:@"%s", stage] writeToFile:p atomically:YES encoding:4 error:NULL];
+    }
+}
+
 - (void)loadView {
+    MARK("10_loadView_begin");
     CGRect f = [UIScreen mainScreen].applicationFrame;
     UIView *v = [[UIView alloc] initWithFrame:f];
     v.backgroundColor = [UIColor whiteColor];
     self.view = [v autorelease];
+    MARK("11_view_set");
 
     _table = [[UITableView alloc] initWithFrame:CGRectMake(0, 0, f.size.width, f.size.height - 48.0f) style:UITableViewStylePlain];
     _table.dataSource = self;
@@ -84,6 +94,7 @@
     _table.separatorStyle = UITableViewCellSeparatorStyleNone;
     _table.allowsSelection = NO;
     [self.view addSubview:_table];
+    MARK("12_table_added");
 
     _inputBar = [[UIView alloc] initWithFrame:CGRectMake(0, f.size.height - 48.0f, f.size.width, 48.0f)];
     _inputBar.backgroundColor = [UIColor colorWithWhite:0.95f alpha:1.0f];
@@ -93,6 +104,7 @@
     _field.delegate = self;
     _field.returnKeyType = UIReturnKeySend;
     [_inputBar addSubview:_field];
+    MARK("13_field_added");
     _sendBtn = [UIButton buttonWithType:UIButtonTypeRoundedRect];
     _sendBtn.frame = CGRectMake(f.size.width - 78, 8, 70, 32);
     [_sendBtn setTitle:@"发送" forState:UIControlStateNormal];
@@ -103,13 +115,16 @@
     _spin.hidesWhenStopped = YES;
     [_inputBar addSubview:_spin];
     [self.view addSubview:_inputBar];
+    MARK("14_inputbar_done");
 
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(kbShow:) name:UIKeyboardWillShowNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(kbHide:) name:UIKeyboardWillHideNotification object:nil];
+    MARK("15_observers_done");
 }
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    MARK("20_vdl_begin");
     _msgs = [[NSMutableArray alloc] init];
     _buf = [[NSMutableData alloc] init];
 
@@ -117,6 +132,7 @@
     NSString *keyPath = [docs stringByAppendingPathComponent:@"apikey.txt"];
     _apiKey = [[[NSString stringWithContentsOfFile:keyPath encoding:NSUTF8StringEncoding error:NULL]
                 stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] retain];
+    MARK("21_key_loaded");
 
     if ([_apiKey length] == 0) {
         [_msgs addObject:[NSDictionary dictionaryWithObjectsAndKeys:@"assistant", @"role",
@@ -125,6 +141,7 @@
         [_msgs addObject:[NSDictionary dictionaryWithObjectsAndKeys:@"assistant", @"role",
             @"你好，我是 DeepSeek，跑在 2011 年的 iPhone 4S 上。有何贵干？", @"content", nil]];
     }
+    MARK("22_msgs_ready");
 }
 
 - (void)kbShow:(NSNotification *)n {
@@ -209,6 +226,8 @@
 }
 
 - (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)ip {
+    static int laid = 0;
+    if (!laid) { laid = 1; MARK("30_first_cell"); }
     static NSString *cid = @"c";
     ChatCell *cell = [t dequeueReusableCellWithIdentifier:cid];
     if (!cell) cell = [[[ChatCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cid] autorelease];
@@ -297,9 +316,12 @@
 
 @implementation AppDelegate
 - (BOOL)application:(UIApplication *)app didFinishLaunchingWithOptions:(NSDictionary *)opts {
+    MARK("01_appdelegate_begin");
     _window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     _window.rootViewController = [[[ChatViewController alloc] init] autorelease];
+    MARK("02_vc_assigned");
     [_window makeKeyAndVisible];
+    MARK("03_window_visible");
     return YES;
 }
 - (void)dealloc { [_window release]; [super dealloc]; }
