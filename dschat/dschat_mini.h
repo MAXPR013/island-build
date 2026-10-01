@@ -89,11 +89,24 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 - (id)stringByAppendingPathComponent:(id)str;
 - (NSUInteger)length;
 - (BOOL)isEqualToString:(id)s;
+- (BOOL)hasPrefix:(id)prefix;
+- (id)substringFromIndex:(NSUInteger)idx;
+- (id)componentsSeparatedByString:(id)sep;
 @end
 
 @interface NSString (UIKitAdditions)
 - (CGSize)sizeWithFont:(UIFont *)font constrainedToSize:(CGSize)size lineBreakMode:(NSInteger)mode;
 - (BOOL)writeToFile:(id)path atomically:(BOOL)atom encoding:(NSUInteger)enc error:(NSError **)err;
+@end
+
+@interface NSAttributedString : NSObject
+- (id)initWithString:(id)s;
+- (NSUInteger)length;
+@end
+
+@interface NSMutableAttributedString : NSAttributedString
+- (void)appendAttributedString:(id)s;
+- (void)addAttribute:(id)name value:(id)value range:(NSRange)range;
 @end
 
 @interface NSArray : NSObject
@@ -222,6 +235,8 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 
 @interface UIFont : NSObject
 + (UIFont *)systemFontOfSize:(CGFloat)s;
++ (UIFont *)boldSystemFontOfSize:(CGFloat)s;
++ (UIFont *)fontWithName:(id)name size:(CGFloat)s;
 @end
 
 @interface CALayer : NSObject
@@ -249,6 +264,7 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 @property (nonatomic) BOOL editable;
 @property (nonatomic, retain) UIFont *font;
 @property (nonatomic, copy) NSString *text;
+@property (nonatomic, copy) NSAttributedString *attributedText;
 - (void)scrollRangeToVisible:(NSRange)range;
 @end
 
