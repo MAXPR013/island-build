@@ -83,6 +83,7 @@ static NSString *b64encode(NSData *d) {
     BOOL _deepThink;
     BOOL _httpError;
     BOOL _streamDirty;
+    BOOL _pinned;
     NSInteger _alertMode;
 }
 @end
@@ -102,6 +103,8 @@ static NSString *b64encode(NSData *d) {
     _log = [[UITextView alloc] initWithFrame:CGRectMake(0, top, w, h - 48.0f)];
     _log.editable = NO;
     _log.font = [UIFont systemFontOfSize:15.0f];
+    _log.delegate = self;   // 贴底锁定需要滚动回调
+    _pinned = YES;
     [_shell.view addSubview:_log];
 
     UIView *bar = [[UIView alloc] initWithFrame:CGRectMake(0, top + h - 48.0f, w, 48.0f)];
@@ -243,8 +246,29 @@ static NSString *b64encode(NSData *d) {
 #pragma mark - 对话记录
 
 - (void)scrollBottom {
-    NSRange r; r.location = [_rich length]; r.length = 0;
-    [_log scrollRangeToVisible:r];
+    if (!_pinned) return;   // 用户上翻中，不打扰
+    CGSize cs = [_log contentSize];
+    CGFloat fh = _log.frame.size.height;
+    if (cs.height > fh)
+        [_log setContentOffset:CGPointMake(0, cs.height - fh) animated:YES];
+}
+
+- (void)scrollBottomPlain {
+    CGSize cs = [_log contentSize];
+    CGFloat fh = _log.frame.size.height;
+    if (cs.height > fh)
+        [_log setContentOffset:CGPointMake(0, cs.height - fh) animated:NO];
+}
+
+- (void)scrollViewWillBeginDragging:(id)sv {
+    _pinned = NO;   // 用户手动上翻，解除贴底
+    [_field resignFirstResponder];
+}
+
+- (void)scrollViewDidScroll:(id)sv {
+    CGSize cs = [_log contentSize];
+    CGFloat fh = _log.frame.size.height;
+    if ([_log contentOffset].y >= cs.height - fh - 12.0f) _pinned = YES;   // 回到底部附近，恢复贴底
 }
 
 - (void)appendLine:(NSString *)who text:(NSString *)text isUser:(BOOL)isUser {
@@ -387,6 +411,7 @@ static NSString *b64encode(NSData *d) {
     if ([_apiKey length] == 0) return;
     [_field resignFirstResponder];
     _field.text = @"";
+    _pinned = YES;   // 自己发消息总是跳到底部
     [self appendLine:@"我" text:(hasImg ? [NSString stringWithFormat:@"[图片] %@", text] : text) isUser:YES];
 
     id content;
@@ -444,11 +469,6 @@ static NSString *b64encode(NSData *d) {
 }
 
 #pragma mark - SSE 流式解析
-
-- (void)scrollBottomPlain {
-    NSRange r; r.location = [[_log text] length]; r.length = 0;
-    [_log scrollRangeToVisible:r];
-}
 
 - (void)streamTick {
     if (!_streamDirty) return;
