@@ -366,6 +366,8 @@ static void MARK(const char *stage) {
 
 @interface AppDelegate : NSObject <UIApplicationDelegate> {
     UIWindow *_window;
+    UIViewController *_shell;
+    ChatViewController *_chat;
 }
 @end
 
@@ -374,13 +376,17 @@ static void MARK(const char *stage) {
     MARK("01_appdelegate_begin");
     _window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     MARK("02_window_made");
-    _window.rootViewController = [[[ChatViewController alloc] init] autorelease];
-    MARK("03_vc_rooted");
+    _shell = [[UIViewController alloc] init];
+    _window.rootViewController = _shell;
+    MARK("03_shell_rooted");
+    _chat = [[ChatViewController alloc] init];
+    [_shell.view addSubview:_chat.view];
+    MARK("04_chat_added");
     [_window makeKeyAndVisible];
     MARK("05_visible");
     return YES;
 }
-- (void)dealloc { [_window release]; [super dealloc]; }
+- (void)dealloc { [_window release]; [_shell release]; [_chat release]; [super dealloc]; }
 @end
 
 int main(int argc, char *argv[]) {
