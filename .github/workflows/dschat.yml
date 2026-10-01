@@ -1,6 +1,10 @@
 name: build-dschat
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'dschat/**'
+      - '.github/workflows/dschat.yml'
 jobs:
   build:
     runs-on: macos-13
