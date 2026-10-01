@@ -161,6 +161,10 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 - (NSInteger)statusCode;
 @end
 
+@interface NSMutableDictionary : NSDictionary
+- (void)setObject:(id)o forKey:(id)k;
+@end
+
 @interface NSDictionary : NSObject
 + (id)dictionaryWithObjectsAndKeys:(id)first, ...;
 - (id)objectForKey:(id)key;
@@ -407,6 +411,8 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 - (id)initWithTitle:(id)title message:(id)msg delegate:(id)del cancelButtonTitle:(id)cancel otherButtonTitles:(id)first, ...;
 - (void)setTitle:(id)title;
 - (void)setDelegate:(id)del;
+- (void)setAlertViewStyle:(NSInteger)style;
+- (id)textFieldAtIndex:(NSInteger)idx;
 - (NSInteger)addButtonWithTitle:(id)title;
 - (void)show;
 @end
