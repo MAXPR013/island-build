@@ -6,27 +6,28 @@ jobs:
     runs-on: macos-14
     steps:
       - uses: actions/checkout@v4
-      - name: 选用 Xcode 15.4（最后一个支持 armv7 的大版本）
+      - name: Xcode 15.4
         run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
-      - name: 编译 DSChat（armv7 / iOS 6.0，经典链接器，免 SDK）
+      - name: Build DSChat (armv7 / iOS 6.0, ld_classic, SDK-free)
         run: |
+          mkdir -p _build
           xcrun -sdk iphoneos clang -x objective-c -std=gnu99 -O2 -fno-objc-arc \
             -target armv7-apple-ios6.0.0 -miphoneos-version-min=6.0 \
             -Idschat -nostdlib -undefined dynamic_lookup -Wl,-ld_classic \
-            -o DSChat dschat/main.m
-          file DSChat
-      - name: ldid 伪签名
+            -o _build/DSChat dschat/main.m
+          file _build/DSChat
+      - name: ldid fake-sign
         run: |
           brew install ldid
           ldid -S _build/DSChat
-      - name: 打包 IPA
+      - name: Pack IPA
         run: |
-          mkdir -p _build Payload/DSChat.app
+          mkdir -p Payload/DSChat.app
           cp _build/DSChat Payload/DSChat.app/
           cp dschat/Info.plist "dschat/Icon.png" "dschat/Icon@2x.png" "dschat/Default@2x.png" Payload/DSChat.app/
           zip -r DSChat.ipa Payload
           ls -la DSChat.ipa
-      - name: 上传产物
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: DSChat.ipa
