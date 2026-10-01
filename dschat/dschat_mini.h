@@ -236,7 +236,9 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 + (void)commitAnimations;
 @end
 
-@interface UIViewController : NSObject
+@interface UIViewController : NSObject {
+    char _pad_vc[512];   // 占位：免SDK编译时编译器不知父类ivar大小，防止子类ivar与父类内部冲突
+}
 @property (nonatomic, retain) UIView *view;
 - (void)loadView;
 - (void)viewDidLoad;
@@ -260,7 +262,9 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 @property (nonatomic) NSInteger textAlignment, lineBreakMode, numberOfLines;
 @end
 
-@interface UITableViewCell : UIView
+@interface UITableViewCell : UIView {
+    char _pad_cell[512];   // 同上：防止子类ivar撞父类内部
+}
 @property (nonatomic) NSInteger selectionStyle;
 @property (nonatomic, readonly) UIView *contentView;
 - (id)initWithStyle:(NSInteger)style reuseIdentifier:(id)reuseIdentifier;
