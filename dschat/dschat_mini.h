@@ -87,6 +87,7 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 
 @interface NSString (UIKitAdditions)
 - (CGSize)sizeWithFont:(UIFont *)font constrainedToSize:(CGSize)size lineBreakMode:(NSInteger)mode;
+- (BOOL)writeToFile:(id)path atomically:(BOOL)atom encoding:(NSUInteger)enc error:(NSError **)err;
 @end
 
 @interface NSArray : NSObject
