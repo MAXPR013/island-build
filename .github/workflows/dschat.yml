@@ -14,6 +14,7 @@ jobs:
           xcrun -sdk iphoneos clang -x objective-c -std=gnu99 -O2 -fno-objc-arc \
             -target armv7-apple-ios6.0.0 -miphoneos-version-min=6.0 \
             -Idschat -nostdlib -undefined dynamic_lookup -Wl,-ld_classic -lSystem \
+            -framework UIKit -framework Foundation -framework CoreGraphics \
             -o _build/DSChat dschat/main.m
           file _build/DSChat
       - name: ldid fake-sign
