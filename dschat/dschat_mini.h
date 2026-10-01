@@ -175,6 +175,10 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 - (void)setObject:(id)o forKey:(id)k;
 @end
 
+@interface NSMutableParagraphStyle : NSObject
+@property (nonatomic) NSInteger alignment;
+@end
+
 @interface NSNumber : NSObject
 + (id)numberWithBool:(BOOL)b;
 @end
