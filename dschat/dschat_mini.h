@@ -48,6 +48,7 @@ enum { UIActivityIndicatorViewStyleGray = 2 };
 @class UITextField, UIButton, UIControl, UIActivityIndicatorView, UIApplication;
 
 // ---- 外部字符串常量 ----
+typedef struct _NSRange { NSUInteger location; NSUInteger length; } NSRange;
 extern NSString * const UIKeyboardWillShowNotification;
 extern NSString * const UIKeyboardWillHideNotification;
 extern NSString * const UIKeyboardFrameEndUserInfoKey;
@@ -108,6 +109,7 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 + (id)stringWithFormat:(id)fmt, ...;
 - (id)initWithFormat:(id)fmt, ...;
 - (void)appendFormat:(id)fmt, ...;
+- (void)appendString:(id)s;
 - (id)description;
 @end
 
@@ -227,13 +229,25 @@ NSArray *NSSearchPathForDirectoriesInDomains(NSUInteger directory, NSUInteger do
 
 @interface UIView : NSObject
 @property (nonatomic) CGRect frame;
+@property (nonatomic) NSInteger tag;
 @property (nonatomic, retain) UIColor *backgroundColor;
 @property (nonatomic, readonly) CALayer *layer;
 - (id)initWithFrame:(CGRect)f;
 - (void)addSubview:(UIView *)v;
+- (id)viewWithTag:(NSInteger)tag;
 + (void)beginAnimations:(id)animID context:(void *)ctx;
 + (void)setAnimationDuration:(double)d;
 + (void)commitAnimations;
+@end
+
+@interface UIScrollView : UIView
+@end
+
+@interface UITextView : UIScrollView
+@property (nonatomic) BOOL editable;
+@property (nonatomic, retain) UIFont *font;
+@property (nonatomic, copy) NSString *text;
+- (void)scrollRangeToVisible:(NSRange)range;
 @end
 
 @interface UIViewController : NSObject {
