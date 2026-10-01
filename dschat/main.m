@@ -1,6 +1,28 @@
 // DSChat - DeepSeek chat client for iOS 6 (armv7)
 // No ARC, NSURLConnection, single-file build, SDK-free (mini headers + dynamic_lookup).
 #include "dschat_mini.h"
+#include <signal.h>
+
+// ---- 坠机记录仪 ----
+static void writeCrash(NSString *text) {
+    @autoreleasepool {
+        NSString *docs = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0];
+        NSString *p = [docs stringByAppendingPathComponent:@"crash.txt"];
+        [text writeToFile:p atomically:YES encoding:4 error:NULL];
+    }
+}
+
+static void exHandler(NSException *e) {
+    writeCrash([NSString stringWithFormat:@"EXCEPTION: %@ / %@\n%@", [e name], [e reason], [[e callStackSymbols] description]]);
+}
+
+static void sigHandler(int sig) {
+    writeCrash([NSString stringWithFormat:@"SIGNAL: %d", sig]);
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
+extern void NSSetUncaughtExceptionHandler(void *h);
 
 #pragma mark - Bubble cell
 
@@ -349,6 +371,9 @@ static void MARK(const char *stage) {
 
 int main(int argc, char *argv[]) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    NSSetUncaughtExceptionHandler((void *)exHandler);
+    signal(SIGABRT, sigHandler);
+    signal(SIGSEGV, sigHandler);
     int ret = UIApplicationMain(argc, argv, nil, @"AppDelegate");
     [pool release];
     return ret;
