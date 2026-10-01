@@ -1,0 +1,36 @@
+name: build-dschat
+on:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: macos-13
+    steps:
+      - uses: actions/checkout@v4
+      - name: 编译 armv7 / iOS 6
+        run: |
+          set -e
+          sudo xcode-select -s /Applications/Xcode_13.4.1.app/Contents/Developer || true
+          SDK=$(xcrun -sdk iphoneos --show-sdk-path)
+          xcrun -sdk iphoneos clang \
+            -x objective-c -std=gnu99 -fblocks -O2 -fno-objc-arc \
+            -target armv7-apple-ios6.0.0 -miphoneos-version-min=6.0 \
+            -isysroot "$SDK" \
+            -o DSChat dschat/main.m \
+            -framework UIKit -framework Foundation -framework CoreGraphics
+          file DSChat
+      - name: ldid 伪签名
+        run: |
+          brew install ldid || true
+          ldid -S DSChat
+      - name: 打包 IPA
+        run: |
+          mkdir -p Payload/DSChat.app
+          cp DSChat Payload/DSChat.app/
+          cp dschat/Info.plist Payload/DSChat.app/
+          cp dschat/Icon.png dschat/Icon@2x.png dschat/Default@2x.png Payload/DSChat.app/
+          zip -r DSChat.ipa Payload
+          ls -la DSChat.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DSChat.ipa
+          path: DSChat.ipa
