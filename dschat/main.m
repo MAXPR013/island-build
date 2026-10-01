@@ -318,10 +318,13 @@ static void MARK(const char *stage) {
 - (BOOL)application:(UIApplication *)app didFinishLaunchingWithOptions:(NSDictionary *)opts {
     MARK("01_appdelegate_begin");
     _window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-    _window.rootViewController = [[[ChatViewController alloc] init] autorelease];
-    MARK("02_vc_assigned");
+    MARK("02_window_made");
+    ChatViewController *vc = [[[ChatViewController alloc] init] autorelease];
+    MARK("03_vc_made");
+    [_window addSubview:vc.view];
+    MARK("04_vc_view_added");
     [_window makeKeyAndVisible];
-    MARK("03_window_visible");
+    MARK("05_visible");
     return YES;
 }
 - (void)dealloc { [_window release]; [super dealloc]; }
