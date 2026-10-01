@@ -320,7 +320,7 @@ static NSString *b64encode(NSData *d) {
     [_shell dismissModalViewControllerAnimated:YES];
 }
 
-- (void)imagePickerControllerDidFinishPickingMediaWithInfo:(id)info {
+- (void)imagePickerController:(id)picker didFinishPickingMediaWithInfo:(id)info {
     UIImage *img = [info objectForKey:@"UIImagePickerControllerOriginalImage"];
     [_shell dismissModalViewControllerAnimated:YES];
     if (!img) return;
