@@ -180,9 +180,9 @@ static NSString *b64encode(NSData *d) {
                               withIntermediateDirectories:YES attributes:nil error:NULL];
 
     if ([_apiKey length] == 0) {
-        [self appendLine:@"系统" text:@"没有读到 apikey.txt，请检查注入是否成功。"] isUser:NO];
+        [self appendLine:@"系统" text:@"没有读到 apikey.txt，请检查注入是否成功。" isUser:NO];
     } else if (![self loadLatestSession]) {
-        [self appendLine:@"DeepSeek" text:@"你好，我是 DeepSeek，跑在 2011 年的 iPhone 4S 上。有何贵干？"] isUser:NO];
+        [self appendLine:@"DeepSeek" text:@"你好，我是 DeepSeek，跑在 2011 年的 iPhone 4S 上。有何贵干？" isUser:NO];
     }
     return YES;
 }
@@ -312,7 +312,7 @@ static NSString *b64encode(NSData *d) {
     _deepThink = !_deepThink;
     [_thinkBtn setTitleColor:(_deepThink ? [UIColor colorWithRed:0.1f green:0.4f blue:0.9f alpha:1.0f] : [UIColor blackColor])
                     forState:UIControlStateNormal];
-    [self appendLine:@"系统" text:(_deepThink ? @"深度思考已开启（回答会更慢更聪明）" : @"深度思考已关闭")] isUser:NO];
+    [self appendLine:@"系统" text:(_deepThink ? @"深度思考已开启（回答会更慢更聪明）" : @"深度思考已关闭") isUser:NO];
 }
 
 #pragma mark - 拍照识图
@@ -370,7 +370,7 @@ static NSString *b64encode(NSData *d) {
     _pendingImage = [[NSString stringWithFormat:@"data:image/jpeg;base64,%@", b64encode(jpg)] retain];
     [_thumb setImage:small];
     _thumb.hidden = NO;
-    [self appendLine:@"系统" text:@"图片已就绪，输入文字后发送即可让它看图（发送后自动清除）"] isUser:NO];
+    [self appendLine:@"系统" text:@"图片已就绪，输入文字后发送即可让它看图（发送后自动清除）" isUser:NO];
 }
 
 #pragma mark - 发送与网络
@@ -554,7 +554,7 @@ static NSString *b64encode(NSData *d) {
         NSString *msg = @"未知错误";
         if ([obj isKindOfClass:[NSDictionary class]] && [obj objectForKey:@"error"])
             msg = [[obj objectForKey:@"error"] objectForKey:@"message"];
-        [self appendLine:@"系统" text:[NSString stringWithFormat:@"API 报错：%@", msg]] isUser:NO];
+        [self appendLine:@"系统" text:[NSString stringWithFormat:@"API 报错：%@", msg] isUser:NO];
         return;
     }
     [self finalizeStream];
@@ -647,7 +647,7 @@ static NSString *b64encode(NSData *d) {
     [_msgs release]; _msgs = [[NSMutableArray alloc] init];
     [_rich release]; _rich = [[NSMutableAttributedString alloc] initWithString:@""];
     _log.attributedText = _rich;
-    [self appendLine:@"DeepSeek" text:@"新会话开始了，有何贵干？"] isUser:NO];
+    [self appendLine:@"DeepSeek" text:@"新会话开始了，有何贵干？" isUser:NO];
 }
 
 - (void)menuPressed {
@@ -685,7 +685,7 @@ static NSString *b64encode(NSData *d) {
     NSData *json = [NSJSONSerialization dataWithJSONObject:d options:0 error:NULL];
     if (json) [json writeToFile:path atomically:YES];
     [d release];
-    [self appendLine:@"系统" text:[NSString stringWithFormat:@"本会话已重命名为「%@」", newTitle]] isUser:NO];
+    [self appendLine:@"系统" text:[NSString stringWithFormat:@"本会话已重命名为「%@」", newTitle] isUser:NO];
 }
 
 - (void)alertView:(id)av clickedButtonAtIndex:(NSInteger)idx {
