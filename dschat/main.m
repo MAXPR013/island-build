@@ -4,7 +4,7 @@
 #include <signal.h>
 
 // ---- 坠机记录仪 ----
-static void writeCrash(NSString *text) {
+static void writeCrash(id text) {
     @autoreleasepool {
         NSString *docs = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0];
         NSString *p = [docs stringByAppendingPathComponent:@"crash.txt"];
@@ -16,13 +16,25 @@ static void exHandler(NSException *e) {
     writeCrash([NSString stringWithFormat:@"EXCEPTION: %@ / %@\n%@", [e name], [e reason], [[e callStackSymbols] description]]);
 }
 
-static void sigHandler(int sig) {
-    writeCrash([NSString stringWithFormat:@"SIGNAL: %d", sig]);
+extern void NSSetUncaughtExceptionHandler(void *h);
+extern int backtrace(void **buffer, int size);
+extern char **backtrace_symbols(void *const *buffer, int size);
+extern void free(void *ptr);
+
+static void sigHandler2(int sig) {
+    void *bt[40];
+    int n = backtrace(bt, 40);
+    char **syms = backtrace_symbols(bt, n);
+    NSMutableString *s = [[NSMutableString alloc] initWithFormat:@"SIGNAL %d\n", sig];
+    if (syms) {
+        for (int i = 0; i < n; i++) [s appendFormat:@"%s\n", syms[i]];
+        free(syms);
+    }
+    writeCrash(s);
+    [s release];
     signal(sig, SIG_DFL);
     raise(sig);
 }
-
-extern void NSSetUncaughtExceptionHandler(void *h);
 
 #pragma mark - Bubble cell
 
@@ -372,8 +384,8 @@ static void MARK(const char *stage) {
 int main(int argc, char *argv[]) {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     NSSetUncaughtExceptionHandler((void *)exHandler);
-    signal(SIGABRT, sigHandler);
-    signal(SIGSEGV, sigHandler);
+    signal(SIGABRT, sigHandler2);
+    signal(SIGSEGV, sigHandler2);
     int ret = UIApplicationMain(argc, argv, nil, @"AppDelegate");
     [pool release];
     return ret;
