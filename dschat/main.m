@@ -1,5 +1,6 @@
-// DSChat - DeepSeek chat client for iOS 6 (armv7)
-// No ARC, NSURLConnection, single-file build, SDK-free (mini headers + dynamic_lookup).
+// DSChat v14 - DeepSeek chat client for iOS 6 (armv7)
+// 架构：TestMini 验证过的安全区 —— NSObject AppDelegate 直管一切
+// 无 UIViewController、无 UITableView、无自定义 delegate（这台 iOS 6 上的三大雷区）
 #include "dschat_mini.h"
 #include <signal.h>
 
@@ -10,10 +11,6 @@ static void writeCrashTo(id text, NSString *fname) {
         NSString *p = [docs stringByAppendingPathComponent:fname];
         [text writeToFile:p atomically:YES encoding:4 error:NULL];
     }
-}
-
-static void writeCrash(id text) {
-    writeCrashTo(text, @"crash.txt");
 }
 
 static void exHandler(NSException *e) {
@@ -34,73 +31,21 @@ static void sigHandler2(int sig) {
         for (int i = 0; i < n; i++) [s appendFormat:@"%s\n", syms[i]];
         free(syms);
     }
-    writeCrash(s);
+    writeCrashTo(s, @"crash.txt");
     [s release];
     signal(sig, SIG_DFL);
     raise(sig);
 }
 
-#pragma mark - Bubble cell
-
-@interface ChatCell : UITableViewCell {
-    UILabel *_bubble;
-}
-- (void)setMessage:(NSString *)text isUser:(BOOL)isUser width:(CGFloat)width;
-+ (CGFloat)heightFor:(NSString *)text width:(CGFloat)width;
-@end
-
-#define kBubbleFont [UIFont systemFontOfSize:15.0f]
-
-@implementation ChatCell
-
-- (id)initWithStyle:(NSInteger)style reuseIdentifier:(NSString *)reuseIdentifier {
-    self = [super initWithStyle:style reuseIdentifier:reuseIdentifier];
-    if (self) {
-        self.selectionStyle = UITableViewCellSelectionStyleNone;
-        _bubble = [[UILabel alloc] initWithFrame:CGRectZero];
-        _bubble.font = kBubbleFont;
-        _bubble.numberOfLines = 0;
-        _bubble.lineBreakMode = UILineBreakModeWordWrap;
-        _bubble.backgroundColor = [UIColor clearColor];
-        [self.contentView addSubview:_bubble];
-    }
-    return self;
-}
-
-+ (CGFloat)heightFor:(NSString *)text width:(CGFloat)width {
-    CGSize s = [text sizeWithFont:kBubbleFont constrainedToSize:CGSizeMake(width - 100.0f, 9999.0f) lineBreakMode:UILineBreakModeWordWrap];
-    return s.height + 24.0f;
-}
-
-- (void)setMessage:(NSString *)text isUser:(BOOL)isUser width:(CGFloat)width {
-    CGSize s = [text sizeWithFont:kBubbleFont constrainedToSize:CGSizeMake(width - 100.0f, 9999.0f) lineBreakMode:UILineBreakModeWordWrap];
-    CGFloat x = isUser ? (width - s.width - 26.0f) : 16.0f;
-    _bubble.frame = CGRectMake(x, 8.0f, s.width + 10.0f, s.height + 8.0f);
-    _bubble.text = text;
-    _bubble.textColor = isUser ? [UIColor whiteColor] : [UIColor blackColor];
-    _bubble.backgroundColor = isUser ? [UIColor colorWithRed:0.20f green:0.45f blue:0.95f alpha:1.0f]
-                                     : [UIColor colorWithWhite:0.88f alpha:1.0f];
-    _bubble.layer.cornerRadius = 10.0f;
-    _bubble.layer.masksToBounds = YES;
-    _bubble.textAlignment = UITextAlignmentLeft;
-}
-
-- (void)dealloc {
-    [_bubble release];
-    [super dealloc];
-}
-
-@end
-
-#pragma mark - Chat view controller
-
-@interface ChatViewController : UIViewController <UITableViewDataSource, UITableViewDelegate, UITextFieldDelegate, NSURLConnectionDelegate> {
-    UITableView *_table;
-    UIView *_inputBar;
+// ---- 主控（NSObject，直管窗口与全部控件）----
+@interface AppDelegate : NSObject <UIApplicationDelegate, NSURLConnectionDelegate> {
+    UIWindow *_window;
+    UITextView *_log;
     UITextField *_field;
     UIButton *_sendBtn;
     UIActivityIndicatorView *_spin;
-    NSMutableArray *_msgs;       // dicts: role, content
+    NSMutableString *_history;
+    NSMutableArray *_msgs;       // 给 API 用的角色化消息
     NSMutableData *_buf;
     NSURLConnection *_conn;
     NSString *_apiKey;
@@ -108,129 +53,87 @@ static void sigHandler2(int sig) {
 }
 @end
 
-@implementation ChatViewController
+@implementation AppDelegate
 
-static void MARK(const char *stage) {
-    @autoreleasepool {
-        NSString *docs = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0];
-        NSString *p = [docs stringByAppendingPathComponent:@"stage.txt"];
-        [[NSString stringWithFormat:@"%s", stage] writeToFile:p atomically:YES encoding:4 error:NULL];
-    }
-}
+- (BOOL)application:(UIApplication *)app didFinishLaunchingWithOptions:(NSDictionary *)opts {
+    CGRect b = [[UIScreen mainScreen] bounds];
+    CGFloat w = b.size.width, h = b.size.height;
+    _window = [[UIWindow alloc] initWithFrame:b];
+    _window.backgroundColor = [UIColor whiteColor];
 
-- (void)loadView {
-    MARK("10_loadView_begin");
-    CGRect f = [UIScreen mainScreen].applicationFrame;
-    UIView *v = [[UIView alloc] initWithFrame:f];
-    v.backgroundColor = [UIColor whiteColor];
-    self.view = [v autorelease];
-    MARK("11_view_set");
+    _log = [[UITextView alloc] initWithFrame:CGRectMake(0, 0, w, h - 48.0f)];
+    _log.editable = NO;
+    _log.font = [UIFont systemFontOfSize:15.0f];
+    [_window addSubview:_log];
 
-    _table = [[UITableView alloc] initWithFrame:CGRectMake(0, 0, f.size.width, f.size.height - 48.0f) style:UITableViewStylePlain];
-    _table.dataSource = self;
-    _table.delegate = self;
-    _table.separatorStyle = UITableViewCellSeparatorStyleNone;
-    _table.allowsSelection = NO;
-    [self.view addSubview:_table];
-    MARK("12_table_added");
+    UIView *bar = [[UIView alloc] initWithFrame:CGRectMake(0, h - 48.0f, w, 48.0f)];
+    bar.backgroundColor = [UIColor colorWithWhite:0.95f alpha:1.0f];
+    bar.tag = 4242;   // 用 tag 找它，不留额外 ivar 依赖
+    [_window addSubview:bar];
 
-    _inputBar = [[UIView alloc] initWithFrame:CGRectMake(0, f.size.height - 48.0f, f.size.width, 48.0f)];
-    _inputBar.backgroundColor = [UIColor colorWithWhite:0.95f alpha:1.0f];
-    _field = [[UITextField alloc] initWithFrame:CGRectMake(8, 8, f.size.width - 92, 32)];
+    _field = [[UITextField alloc] initWithFrame:CGRectMake(8, 8, w - 92, 32)];
     _field.borderStyle = UITextBorderStyleRoundedRect;
     _field.placeholder = @"说点什么…";
     _field.returnKeyType = UIReturnKeySend;
     [_field addTarget:self action:@selector(fieldBegan) forControlEvents:UIControlEventEditingDidBegin];
     [_field addTarget:self action:@selector(fieldEnded) forControlEvents:UIControlEventEditingDidEnd];
     [_field addTarget:self action:@selector(sendPressed) forControlEvents:UIControlEventEditingDidEndOnExit];
-    [_inputBar addSubview:_field];
-    MARK("13_field_added");
+    [bar addSubview:_field];
+
     _sendBtn = [UIButton buttonWithType:UIButtonTypeRoundedRect];
-    _sendBtn.frame = CGRectMake(f.size.width - 78, 8, 70, 32);
+    _sendBtn.frame = CGRectMake(w - 78, 8, 70, 32);
     [_sendBtn setTitle:@"发送" forState:UIControlStateNormal];
     [_sendBtn addTarget:self action:@selector(sendPressed) forControlEvents:UIControlEventTouchUpInside];
-    [_inputBar addSubview:_sendBtn];
+    [bar addSubview:_sendBtn];
+
     _spin = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
-    _spin.center = CGPointMake(f.size.width - 96, 24);
+    _spin.center = CGPointMake(w - 96, 24);
     _spin.hidesWhenStopped = YES;
-    [_inputBar addSubview:_spin];
-    [self.view addSubview:_inputBar];
-    MARK("14_inputbar_done");
-}
+    [bar addSubview:_spin];
 
-- (void)slideInputUp:(BOOL)up {
-    CGFloat kh = up ? 216.0f : 0.0f;   // iOS 6 竖屏键盘固定高
-    CGRect f = self.view.frame;
-    _table.frame = CGRectMake(0, 0, f.size.width, f.size.height - 48.0f - kh);
-    _inputBar.frame = CGRectMake(0, f.size.height - 48.0f - kh, f.size.width, 48.0f);
-}
+    [_window makeKeyAndVisible];
 
-// iOS 6 朝向回调
-- (BOOL)shouldAutorotate { return NO; }
-- (NSUInteger)supportedInterfaceOrientations { return 2; }
-- (NSInteger)preferredInterfaceOrientationForPresentation { return 1; }
-
-- (void)fieldBegan {
-    [self slideInputUp:YES];
-}
-
-- (void)fieldEnded {
-    [self slideInputUp:NO];
-}
-
-- (void)scrollViewWillBeginDragging:(id)sv {
-    [_field resignFirstResponder];
-}
-
-- (void)viewDidLoad {
-    [super viewDidLoad];
-    MARK("20_vdl_begin");
     _msgs = [[NSMutableArray alloc] init];
     _buf = [[NSMutableData alloc] init];
+    _history = [[NSMutableString alloc] init];
 
     NSString *docs = [NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES) objectAtIndex:0];
     NSString *keyPath = [docs stringByAppendingPathComponent:@"apikey.txt"];
     _apiKey = [[[NSString stringWithContentsOfFile:keyPath encoding:NSUTF8StringEncoding error:NULL]
                 stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]] retain];
-    MARK("21_key_loaded");
 
     if ([_apiKey length] == 0) {
-        [_msgs addObject:[NSDictionary dictionaryWithObjectsAndKeys:@"assistant", @"role",
-            @"没有读到 apikey.txt，请检查注入是否成功。", @"content", nil]];
+        [self appendLine:@"系统" text:@"没有读到 apikey.txt，请检查注入是否成功。"];
     } else {
-        [_msgs addObject:[NSDictionary dictionaryWithObjectsAndKeys:@"assistant", @"role",
-            @"你好，我是 DeepSeek，跑在 2011 年的 iPhone 4S 上。有何贵干？", @"content", nil]];
+        [self appendLine:@"DeepSeek" text:@"你好，我是 DeepSeek，跑在 2011 年的 iPhone 4S 上。有何贵干？"];
     }
-    MARK("22_msgs_ready");
+    return YES;
 }
 
-- (void)kbShow:(NSNotification *)n {
-    CGRect kr = [[[n userInfo] objectForKey:UIKeyboardFrameEndUserInfoKey] CGRectValue];
-    CGFloat kh = kr.size.height;
-    [UIView beginAnimations:nil context:NULL];
-    [UIView setAnimationDuration:0.25];
-    CGRect f = self.view.frame;
-    _table.frame = CGRectMake(0, 0, f.size.width, f.size.height - 48.0f - kh);
-    _inputBar.frame = CGRectMake(0, f.size.height - 48.0f - kh, f.size.width, 48.0f);
-    [UIView commitAnimations];
-    [self scrollToBottom];
+- (void)appendLine:(NSString *)who text:(NSString *)text {
+    if ([_history length] > 0) [_history appendString:@"\n\n"];
+    [_history appendFormat:@"%@：%@", who, text];
+    _log.text = _history;
+    // 滚到底
+    NSRange r; r.location = [_history length]; r.length = 0;
+    [_log scrollRangeToVisible:r];
 }
 
-- (void)kbHide:(NSNotification *)n {
-    [UIView beginAnimations:nil context:NULL];
-    [UIView setAnimationDuration:0.25];
-    CGRect f = self.view.frame;
-    _table.frame = CGRectMake(0, 0, f.size.width, f.size.height - 48.0f);
-    _inputBar.frame = CGRectMake(0, f.size.height - 48.0f, f.size.width, 48.0f);
-    [UIView commitAnimations];
+- (void)fieldBegan {
+    CGRect b = _window.frame;
+    CGFloat kh = 216.0f;   // iOS 6 竖屏键盘
+    _log.frame = CGRectMake(0, 0, b.size.width, b.size.height - 48.0f - kh);
+    UIView *bar = [_window viewWithTag:4242];
+    bar.frame = CGRectMake(0, b.size.height - 48.0f - kh, b.size.width, 48.0f);
+    NSRange r; r.location = [_history length]; r.length = 0;
+    [_log scrollRangeToVisible:r];
 }
 
-- (void)scrollToBottom {
-    NSInteger n = [_msgs count];
-    if (n > 0) {
-        [_table scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:n - 1 inSection:0]
-                      atScrollPosition:UITableViewScrollPositionBottom animated:YES];
-    }
+- (void)fieldEnded {
+    CGRect b = _window.frame;
+    _log.frame = CGRectMake(0, 0, b.size.width, b.size.height - 48.0f);
+    UIView *bar = [_window viewWithTag:4242];
+    bar.frame = CGRectMake(0, b.size.height - 48.0f, b.size.width, 48.0f);
 }
 
 - (void)sendPressed {
@@ -239,22 +142,17 @@ static void MARK(const char *stage) {
     if ([_apiKey length] == 0) return;
     [_field resignFirstResponder];
     _field.text = @"";
+    [self appendLine:@"我" text:text];
     [_msgs addObject:[NSDictionary dictionaryWithObjectsAndKeys:@"user", @"role", text, @"content", nil]];
-    [_table reloadData];
-    [self scrollToBottom];
     _waiting = YES;
     _sendBtn.enabled = NO;
     [_spin startAnimating];
 
-    // build messages array for API (history + new)
     NSMutableArray *apiMsgs = [NSMutableArray array];
     [apiMsgs addObject:[NSDictionary dictionaryWithObjectsAndKeys:@"system", @"role",
         @"你是 DeepSeek，一个乐于助人的 AI 助手。请用简体中文回答，回答尽量简洁。", @"content", nil]];
     for (NSDictionary *m in _msgs) {
-        NSString *r = [m objectForKey:@"role"];
-        if ([r isEqualToString:@"user"] || [r isEqualToString:@"assistant"]) {
-            [apiMsgs addObject:m];
-        }
+        [apiMsgs addObject:m];
     }
     NSDictionary *body = [NSDictionary dictionaryWithObjectsAndKeys:
         @"deepseek-chat", @"model",
@@ -276,37 +174,9 @@ static void MARK(const char *stage) {
     _conn = [[NSURLConnection alloc] initWithRequest:req delegate:self startImmediately:YES];
 }
 
-#pragma mark UITableView
-
-- (NSInteger)tableView:(UITableView *)t numberOfRowsInSection:(NSInteger)s { return [_msgs count]; }
-
-- (CGFloat)tableView:(UITableView *)t heightForRowAtIndexPath:(NSIndexPath *)ip {
-    NSDictionary *m = [_msgs objectAtIndex:ip.row];
-    return [ChatCell heightFor:[m objectForKey:@"content"] width:t.frame.size.width];
-}
-
-- (UITableViewCell *)tableView:(UITableView *)t cellForRowAtIndexPath:(NSIndexPath *)ip {
-    static int laid = 0;
-    if (!laid) { laid = 1; MARK("30_first_cell"); }
-    static NSString *cid = @"c";
-    ChatCell *cell = [t dequeueReusableCellWithIdentifier:cid];
-    if (!cell) cell = [[[ChatCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:cid] autorelease];
-    NSDictionary *m = [_msgs objectAtIndex:ip.row];
-    [cell setMessage:[m objectForKey:@"content"] isUser:[[m objectForKey:@"role"] isEqualToString:@"user"] width:t.frame.size.width];
-    return cell;
-}
-
-#pragma mark UITextField
-
-- (BOOL)textFieldShouldReturn:(UITextField *)tf {
-    [self sendPressed];
-    return YES;
-}
-
 #pragma mark NSURLConnection
 
 - (void)connection:(NSURLConnection *)c didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)ch {
-    // iOS 6 (2012) root store may not know the CA of api.deepseek.com; trust anyway.
     if ([ch.protectionSpace.authenticationMethod isEqualToString:NSURLAuthenticationMethodServerTrust]) {
         [[ch sender] useCredential:[NSURLCredential credentialForTrust:ch.protectionSpace.serverTrust]
         forAuthenticationChallenge:ch];
@@ -323,20 +193,10 @@ static void MARK(const char *stage) {
     [_buf appendData:data];
 }
 
-- (void)finishWaiting {
+- (void)connectionDidFinishLoading:(NSURLConnection *)c {
     _waiting = NO;
     _sendBtn.enabled = YES;
     [_spin stopAnimating];
-}
-
-- (void)appendAssistant:(NSString *)text {
-    [_msgs addObject:[NSDictionary dictionaryWithObjectsAndKeys:@"assistant", @"role", text, @"content", nil]];
-    [_table reloadData];
-    [self scrollToBottom];
-}
-
-- (void)connectionDidFinishLoading:(NSURLConnection *)c {
-    [self finishWaiting];
     NSError *err = nil;
     id obj = [NSJSONSerialization JSONObjectWithData:_buf options:0 error:&err];
     NSString *reply = nil;
@@ -344,55 +204,28 @@ static void MARK(const char *stage) {
         NSArray *choices = [obj objectForKey:@"choices"];
         if ([choices count] > 0) {
             reply = [[[choices objectAtIndex:0] objectForKey:@"message"] objectForKey:@"content"];
+            [_msgs addObject:[NSDictionary dictionaryWithObjectsAndKeys:@"assistant", @"role", reply, @"content", nil]];
         } else if ([obj objectForKey:@"error"]) {
             reply = [NSString stringWithFormat:@"API 报错：%@", [[obj objectForKey:@"error"] objectForKey:@"message"]];
         }
     }
     if (!reply) reply = [NSString stringWithFormat:@"（解析失败，原始返回 %u 字节）", (unsigned int)[_buf length]];
-    [self appendAssistant:reply];
+    [self appendLine:@"DeepSeek" text:reply];
 }
 
 - (void)connection:(NSURLConnection *)c didFailWithError:(NSError *)error {
-    [self finishWaiting];
-    [self appendAssistant:[NSString stringWithFormat:@"网络错误：%@（code %d）\n检查 WiFi 或告诉我截图。",
+    _waiting = NO;
+    _sendBtn.enabled = YES;
+    [_spin stopAnimating];
+    [self appendLine:@"系统" text:[NSString stringWithFormat:@"网络错误：%@（code %d）",
         [error localizedDescription], (int)[error code]]];
 }
 
 - (void)dealloc {
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
-    [_table release]; [_inputBar release]; [_field release]; [_spin release];
-    [_msgs release]; [_buf release]; [_conn release]; [_apiKey release];
+    [_window release]; [_log release]; [_field release]; [_spin release];
+    [_history release]; [_msgs release]; [_buf release]; [_conn release]; [_apiKey release];
     [super dealloc];
 }
-
-@end
-
-#pragma mark - App delegate
-
-@interface AppDelegate : NSObject <UIApplicationDelegate> {
-    UIWindow *_window;
-    UIViewController *_shell;
-    ChatViewController *_chat;
-}
-@end
-
-@implementation AppDelegate
-- (BOOL)application:(UIApplication *)app didFinishLaunchingWithOptions:(NSDictionary *)opts {
-    MARK("01_appdelegate_begin");
-    _window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-    MARK("02_window_made");
-    _chat = [[ChatViewController alloc] init];
-    [_window addSubview:_chat.view];
-    MARK("04_chat_added");
-    [_window makeKeyAndVisible];
-    MARK("05_visible");
-    return YES;
-}
-// iOS 6 朝向回调：给 UIKit 一个明确的答案，别让它摸到空指针
-- (NSUInteger)application:(id)app supportedInterfaceOrientationsForWindow:(id)w {
-    return 2; // UIInterfaceOrientationMaskPortrait
-}
-- (void)dealloc { [_window release]; [_shell release]; [_chat release]; [super dealloc]; }
 @end
 
 int main(int argc, char *argv[]) {
