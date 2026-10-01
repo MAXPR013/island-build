@@ -79,6 +79,7 @@ static NSString *b64encode(NSData *d) {
     BOOL _editing;
     BOOL _deepThink;
     BOOL _httpError;
+    NSInteger _alertMode;
 }
 @end
 
@@ -86,7 +87,7 @@ static NSString *b64encode(NSData *d) {
 
 - (BOOL)application:(UIApplication *)app didFinishLaunchingWithOptions:(NSDictionary *)opts {
     CGRect bf = [[UIScreen mainScreen] applicationFrame];
-    CGFloat top = bf.origin.y;
+    CGFloat top = 0;   // 壳视图的本地坐标系，状态栏偏移系统已处理
     CGFloat w = bf.size.width, h = bf.size.height;
 
     _window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
@@ -248,7 +249,7 @@ static NSString *b64encode(NSData *d) {
 - (void)slideInput:(BOOL)up {
     CGFloat kh = up ? _kbHeight : 0.0f;
     CGRect bf = [[UIScreen mainScreen] applicationFrame];
-    CGFloat top = bf.origin.y;
+    CGFloat top = 0;   // 同上：壳视图本地坐标
     _log.frame = CGRectMake(0, top, bf.size.width, bf.size.height - 48.0f - kh);
     UIView *bar = [_shell.view viewWithTag:4242];
     bar.frame = CGRectMake(0, top + bf.size.height - 48.0f - kh, bf.size.width, 48.0f);
@@ -288,7 +289,7 @@ static NSString *b64encode(NSData *d) {
 #pragma mark - 拍照识图
 
 - (void)photoPressed {
-    BOOL hasCam = [UIImagePickerController isSourceTypeAvailable:0];
+    BOOL hasCam = [UIImagePickerController isSourceTypeAvailable:1];   // Camera=1
     UIActionSheet *sheet;
     if (hasCam) {
         sheet = [[UIActionSheet alloc] initWithTitle:@"识图（图片将发给视觉模型）" delegate:self
@@ -304,10 +305,10 @@ static NSString *b64encode(NSData *d) {
 }
 
 - (void)actionSheet:(id)sheet clickedButtonAtIndex:(NSInteger)idx {
-    BOOL hasCam = [UIImagePickerController isSourceTypeAvailable:0];
+    BOOL hasCam = [UIImagePickerController isSourceTypeAvailable:1];
     NSInteger cancelIdx = hasCam ? 2 : 1;
     if (idx == cancelIdx) return;
-    NSInteger src = (hasCam && idx == 0) ? 0 : 1;
+    NSInteger src = (hasCam && idx == 0) ? 1 : 0;   // Camera=1, PhotoLibrary=0
     UIImagePickerController *p = [[UIImagePickerController alloc] init];
     p.sourceType = src;
     p.delegate = self;
@@ -593,6 +594,7 @@ static NSString *b64encode(NSData *d) {
 
 - (void)menuPressed {
     [self saveSession];
+    _alertMode = 0;
     NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:[self sessionsDir] error:NULL];
     NSArray *sorted = files ? [files sortedArrayUsingSelector:@selector(compare:)] : [NSArray array];
 
@@ -608,16 +610,39 @@ static NSString *b64encode(NSData *d) {
         NSString *title = [obj isKindOfClass:[NSDictionary class]] ? [obj objectForKey:@"title"] : f;
         [av addButtonWithTitle:title ? title : f];
     }
+    if (_sessionId) [av addButtonWithTitle:@"✏️ 重命名当前会话"];
     if (_sessionId) [av addButtonWithTitle:@"🗑 删除当前会话"];
     [av addButtonWithTitle:@"取消"];
     [av show];
     [av release];
 }
 
+- (void)renameCurrentSession:(NSString *)newTitle {
+    if (!_sessionId || [newTitle length] == 0) return;
+    NSString *path = [[self sessionsDir] stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.json", _sessionId]];
+    id obj = [NSJSONSerialization JSONObjectWithData:[NSData dataWithContentsOfFile:path] options:0 error:NULL];
+    if (![obj isKindOfClass:[NSDictionary class]]) return;
+    NSMutableDictionary *d = [obj mutableCopy];
+    [d setObject:newTitle forKey:@"title"];
+    NSData *json = [NSJSONSerialization dataWithJSONObject:d options:0 error:NULL];
+    if (json) [json writeToFile:path atomically:YES];
+    [d release];
+    [self appendLine:@"系统" text:[NSString stringWithFormat:@"本会话已重命名为「%@」", newTitle]];
+}
+
 - (void)alertView:(id)av clickedButtonAtIndex:(NSInteger)idx {
+    if (_alertMode == 1) {   // 重命名弹窗
+        if (idx == 1) {      // 好
+            UITextField *tf = [av textFieldAtIndex:0];
+            if (tf) [self renameCurrentSession:[tf text]];
+        }
+        _alertMode = 0;
+        return;
+    }
     NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:[self sessionsDir] error:NULL];
     NSArray *sorted = files ? [files sortedArrayUsingSelector:@selector(compare:)] : [NSArray array];
-    NSInteger cancelIdx = 1 + [sorted count] + (_sessionId ? 1 : 0);
+    NSInteger extra = _sessionId ? 2 : 0;   // 重命名+删除
+    NSInteger cancelIdx = 1 + [sorted count] + extra;
     if (idx == cancelIdx) return;                    // 取消
     if (idx == 0) { [self newSession]; return; }     // 新会话
     if (idx >= 1 && idx <= (NSInteger)[sorted count]) {
@@ -627,6 +652,21 @@ static NSString *b64encode(NSData *d) {
             [_sessionId release];
             _sessionId = [[f stringByDeletingPathExtension] retain];
         }
+        return;
+    }
+    if (_sessionId && idx == (NSInteger)[sorted count] + 1) {
+        // 重命名当前会话：弹输入框
+        _alertMode = 1;
+        UIAlertView *rv = [[UIAlertView alloc] init];
+        [rv setTitle:@"重命名会话"];
+        [rv setDelegate:self];
+        [rv setAlertViewStyle:1];   // PlainTextInput
+        UITextField *tf = [rv textFieldAtIndex:0];
+        if (tf) [tf setText:[self titleForMsgs:_msgs]];
+        [rv addButtonWithTitle:@"算了"];
+        [rv addButtonWithTitle:@"好"];
+        [rv show];
+        [rv release];
         return;
     }
     // 删除当前会话
