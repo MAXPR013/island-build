@@ -374,10 +374,8 @@ static void MARK(const char *stage) {
     MARK("01_appdelegate_begin");
     _window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     MARK("02_window_made");
-    ChatViewController *vc = [[[ChatViewController alloc] init] autorelease];
-    MARK("03_vc_made");
-    [_window addSubview:vc.view];
-    MARK("04_vc_view_added");
+    _window.rootViewController = [[[ChatViewController alloc] init] autorelease];
+    MARK("03_vc_rooted");
     [_window makeKeyAndVisible];
     MARK("05_visible");
     return YES;
