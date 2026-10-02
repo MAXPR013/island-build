@@ -77,6 +77,8 @@ static NSString *b64encode(NSData *d) {
     NSString *_streamBase;
     NSTimer *_streamTimer;
     UIButton *_kbOverlay;
+    NSArray *_pickerFiles;   // 会话选择器当前列出的文件
+    UIView *_pickerMask;     // 会话选择器遮罩
     CGFloat _kbHeight;
     BOOL _waiting;
     BOOL _editing;
@@ -666,29 +668,141 @@ static NSString *b64encode(NSData *d) {
     [self appendLine:@"DeepSeek" text:@"新会话开始了，有何贵干？" isUser:NO];
 }
 
+- (void)dismissSessionPicker {
+    [_pickerMask removeFromSuperview];
+    [_pickerMask release]; _pickerMask = nil;
+    [_pickerFiles release]; _pickerFiles = nil;
+}
+
+- (void)sessionPickerCancel {
+    [self dismissSessionPicker];
+}
+
+- (void)sessionRowPressed:(id)sender {
+    NSString *f = [_pickerFiles objectAtIndex:[sender tag]];
+    [self saveSession];
+    [self dismissSessionPicker];
+    if ([self loadSessionFile:[[self sessionsDir] stringByAppendingPathComponent:f]]) {
+        [_sessionId release];
+        _sessionId = [[f stringByDeletingPathExtension] retain];
+    }
+}
+
+- (void)sessionNewPressed {
+    [self dismissSessionPicker];
+    [self newSession];
+}
+
+- (void)sessionRenamePressed {
+    [self dismissSessionPicker];
+    if (!_sessionId) return;
+    _alertMode = 1;
+    UIAlertView *rv = [[UIAlertView alloc] init];
+    [rv setTitle:@"重命名会话"];
+    [rv setDelegate:self];
+    [rv setAlertViewStyle:1];   // PlainTextInput
+    UITextField *tf = [rv textFieldAtIndex:0];
+    if (tf) [tf setText:[self titleForMsgs:_msgs]];
+    [rv addButtonWithTitle:@"算了"];
+    [rv addButtonWithTitle:@"好"];
+    [rv show];
+    [rv release];
+}
+
+- (void)sessionDeletePressed {
+    [self dismissSessionPicker];
+    if (!_sessionId) return;
+    [[NSFileManager defaultManager] removeItemAtPath:
+        [[self sessionsDir] stringByAppendingPathComponent:[NSString stringWithFormat:@"%@.json", _sessionId]] error:NULL];
+    [self newSession];
+}
+
 - (void)menuPressed {
     [self saveSession];
-    _alertMode = 0;
+    [_field resignFirstResponder];
     NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:[self sessionsDir] error:NULL];
     NSArray *sorted = files ? [files sortedArrayUsingSelector:@selector(compare:)] : [NSArray array];
 
-    UIAlertView *av = [[UIAlertView alloc] init];
-    [av setTitle:@"会话"];
-    [av setDelegate:self];
-    [av addButtonWithTitle:@"＋ 新会话"];
+    // 自定义弹窗：会话列表放在 UIScrollView 里，再高也不出屏
+    CGRect scr = [[UIScreen mainScreen] bounds];
+    CGFloat w = scr.size.width, h = scr.size.height;
+    CGFloat panelW = w - 60.0f;
+    CGFloat rowH = 40.0f, gap = 6.0f;
+    NSUInteger rows = [sorted count] + (_sessionId ? 2 : 0);
+    CGFloat contentH = rows * (rowH + gap);
+    CGFloat maxScrollH = h - 240.0f;   // 标题+新会话+取消+边距的占用
+    CGFloat scrollH = contentH < maxScrollH ? contentH : maxScrollH;
+    CGFloat panelH = 34.0f + rowH + 10.0f + scrollH + 10.0f + rowH + 12.0f;
+
+    UIView *mask = [[UIView alloc] initWithFrame:scr];
+    mask.backgroundColor = [UIColor colorWithWhite:0.0f alpha:0.4f];
+    _pickerMask = mask;
+
+    UIView *panel = [[UIView alloc] initWithFrame:CGRectMake(30, (h - panelH) / 2.0f, panelW, panelH)];
+    panel.backgroundColor = [UIColor whiteColor];
+    [mask addSubview:panel];
+    [panel release];
+
+    UILabel *title = [[UILabel alloc] initWithFrame:CGRectMake(0, 6, panelW, 22)];
+    title.text = @"会话";
+    title.textAlignment = UITextAlignmentCenter;
+    title.font = [UIFont boldSystemFontOfSize:16.0f];
+    [panel addSubview:title];
+    [title release];
+
+    CGFloat y = 34.0f;
+    UIButton *newBtn = [UIButton buttonWithType:UIButtonTypeRoundedRect];
+    newBtn.frame = CGRectMake(12, y, panelW - 24, rowH);
+    [newBtn setTitle:@"＋ 新会话" forState:UIControlStateNormal];
+    [newBtn addTarget:self action:@selector(sessionNewPressed) forControlEvents:UIControlEventTouchUpInside];
+    [panel addSubview:newBtn];
+    y += rowH + 10.0f;
+
+    UIScrollView *sv = [[UIScrollView alloc] initWithFrame:CGRectMake(12, y, panelW - 24, scrollH)];
+    [panel addSubview:sv];
+    [sv release];
+
+    CGFloat cy = 0;
     NSUInteger i;
     for (i = 0; i < [sorted count]; i++) {
         NSString *f = [sorted objectAtIndex:i];
         id obj = [NSJSONSerialization JSONObjectWithData:
             [NSData dataWithContentsOfFile:[[self sessionsDir] stringByAppendingPathComponent:f]] options:0 error:NULL];
-        NSString *title = [obj isKindOfClass:[NSDictionary class]] ? [obj objectForKey:@"title"] : f;
-        [av addButtonWithTitle:title ? title : f];
+        NSString *t = [obj isKindOfClass:[NSDictionary class]] ? [obj objectForKey:@"title"] : f;
+        UIButton *b = [UIButton buttonWithType:UIButtonTypeRoundedRect];
+        b.frame = CGRectMake(0, cy, panelW - 24, rowH);
+        b.tag = i;
+        [b setTitle:(t ? t : f) forState:UIControlStateNormal];
+        [b addTarget:self action:@selector(sessionRowPressed:) forControlEvents:UIControlEventTouchUpInside];
+        [sv addSubview:b];
+        cy += rowH + gap;
     }
-    if (_sessionId) [av addButtonWithTitle:@"✏️ 重命名当前会话"];
-    if (_sessionId) [av addButtonWithTitle:@"🗑 删除当前会话"];
-    [av addButtonWithTitle:@"取消"];
-    [av show];
-    [av release];
+    if (_sessionId) {
+        UIButton *rn = [UIButton buttonWithType:UIButtonTypeRoundedRect];
+        rn.frame = CGRectMake(0, cy, panelW - 24, rowH);
+        [rn setTitle:@"✏️ 重命名当前会话" forState:UIControlStateNormal];
+        [rn addTarget:self action:@selector(sessionRenamePressed) forControlEvents:UIControlEventTouchUpInside];
+        [sv addSubview:rn];
+        cy += rowH + gap;
+
+        UIButton *del = [UIButton buttonWithType:UIButtonTypeRoundedRect];
+        del.frame = CGRectMake(0, cy, panelW - 24, rowH);
+        [del setTitle:@"🗑 删除当前会话" forState:UIControlStateNormal];
+        [del addTarget:self action:@selector(sessionDeletePressed) forControlEvents:UIControlEventTouchUpInside];
+        [sv addSubview:del];
+        cy += rowH + gap;
+    }
+    sv.contentSize = CGSizeMake(panelW - 24, cy);
+    y += scrollH + 10.0f;
+
+    UIButton *cancelBtn = [UIButton buttonWithType:UIButtonTypeRoundedRect];
+    cancelBtn.frame = CGRectMake(12, y, panelW - 24, rowH);
+    [cancelBtn setTitle:@"取消" forState:UIControlStateNormal];
+    [cancelBtn addTarget:self action:@selector(sessionPickerCancel) forControlEvents:UIControlEventTouchUpInside];
+    [panel addSubview:cancelBtn];
+
+    _pickerFiles = [sorted retain];
+    [_window addSubview:mask];
 }
 
 - (void)renameCurrentSession:(NSString *)newTitle {
